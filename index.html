@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Summary Writer</title>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --text-color: #333;
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --card-bg: #ffffff;
+            --border-color: #e0e0e0;
+        }
+        .dark-mode {
+            --bg-color: #1a1a1a;
+            --text-color: #f0f0f0;
+            --card-bg: #2d2d2d;
+            --border-color: #444;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            transition: background 0.3s, color 0.3s;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+        }
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            font-size: 16px;
+            resize: vertical;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            align-items: center;
+        }
+        .slider-container {
+            flex-grow: 1;
+            margin: 0 15px;
+        }
+        .slider {
+            width: 100%;
+        }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+        .count {
+            font-size: 14px;
+            color: #777;
+        }
+        .dark-mode-toggle {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+        .output-container {
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        @media (max-width: 600px) {
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .slider-container {
+                width: 100%;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>📝 Summary Writer</h1>
+            <button class="dark-mode-toggle" id="darkModeToggle">🌓</button>
+        </div>
+        
+        <div class="card">
+            <h2>📋 Original Text</h2>
+            <textarea id="inputText" placeholder="Paste your long text here..."></textarea>
+            <div class="count" id="inputCount">Words: 0 | Characters: 0</div>
+        </div>
+        
+        <div class="card">
+            <div class="controls">
+                <span><strong>Summary Length:</strong></span>
+                <div class="slider-container">
+                    <input type="range" min="1" max="100" value="50" class="slider" id="summaryLength">
+                </div>
+                <span id="lengthValue">50%</span>
+                <button id="summarizeBtn">Summarize</button>
+            </div>
+        </div>
+        
+        <div class="card output-container">
+            <h2>✂️ Summary</h2>
+            <textarea id="outputText" readonly placeholder="Your summary will appear here..."></textarea>
+            <div class="count" id="outputCount">Words: 0 | Characters: 0</div>
+            <button class="copy-btn" id="copyBtn">📋 Copy</button>
+            <button class="copy-btn" id="downloadBtn" style="right: 80px;">📥 Download</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const inputText = document.getElementById('inputText');
+        const outputText = document.getElementById('outputText');
+        const summarizeBtn = document.getElementById('summarizeBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const summaryLength = document.getElementById('summaryLength');
+        const lengthValue = document.getElementById('lengthValue');
+        const inputCount = document.getElementById('inputCount');
+        const outputCount = document.getElementById('outputCount');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+
+        // Update summary length display
+        summaryLength.addEventListener('input', () => {
+            lengthValue.textContent = `${summaryLength.value}%`;
+        });
+
+        // Count words and characters
+        inputText.addEventListener('input', () => {
+            const text = inputText.value;
+            const words = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+            const chars = text.length;
+            inputCount.textContent = `Words: ${words} | Characters: ${chars}`;
+        });
+
+        outputText.addEventListener('input', () => {
+            const text = outputText.value;
+            const words = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+            const chars = text.length;
+            outputCount.textContent = `Words: ${words} | Characters: ${chars}`;
+        });
+
+        // Summarization function (simplified algorithm)
+        function summarize(text, ratio) {
+            if (!text.trim()) return "";
+            
+            // Split into sentences
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+            
+            // Split into words and calculate importance (simplified)
+            const wordFreq = {};
+            text.toLowerCase().split(/\s+/).forEach(word => {
+                if (word.length > 3) { // Ignore short words
+                    wordFreq[word] = (wordFreq[word] || 0) + 1;
+                }
+            });
+            
+            // Score sentences based on word frequency
+            const scoredSentences = sentences.map(sentence => {
+                const words = sentence.toLowerCase().split(/\s+/);
+                let score = 0;
+                words.forEach(word => {
+                    if (wordFreq[word]) score += wordFreq[word];
+                });
+                return { sentence, score };
+            });
+            
+            // Sort by score and take top sentences
+            scoredSentences.sort((a, b) => b.score - a.score);
+            const summaryLength = Math.max(1, Math.floor(sentences.length * (ratio / 100)));
+            const topSentences = scoredSentences.slice(0, summaryLength).map(s => s.sentence.trim());
+            
+            // Reconstruct summary
+            return topSentences.join('. ') + (topSentences.length ? '.' : '');
+        }
+
+        // Generate summary
+        summarizeBtn.addEventListener('click', () => {
+            const text = inputText.value;
+            const ratio = parseInt(summaryLength.value);
+            const summary = summarize(text, ratio);
+            outputText.value = summary;
+            
+            // Update output count
+            const words = summary.trim() === "" ? 0 : summary.trim().split(/\s+/).length;
+            const chars = summary.length;
+            outputCount.textContent = `Words: ${words} | Characters: ${chars}`;
+        });
+
+        // Copy to clipboard
+        copyBtn.addEventListener('click', () => {
+            outputText.select();
+            document.execCommand('copy');
+            copyBtn.textContent = '✅ Copied!';
+            setTimeout(() => {
+                copyBtn.textContent = '📋 Copy';
+            }, 2000);
+        });
+
+        // Download as TXT
+        downloadBtn.addEventListener('click', () => {
+            const summary = outputText.value;
+            if (!summary.trim()) return;
+            
+            const blob = new Blob([summary], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'summary.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Dark mode toggle
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            darkModeToggle.textContent = document.body.classList.contains('dark-mode') ? '🌞' : '🌓';
+        });
+    </script>
+</body>
+</html>
